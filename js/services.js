@@ -257,7 +257,7 @@ angular.module('arachne.services', [])
 					} else if (key == 'catalogIds') {
 						queries.push("catalogIds:" + this[key]);
 					} else if (key == 'q') {
-						queries.push(this[key]);
+						queries.push(this[key] + " -facet_kategorie:Orte");
 					} else if (['fl','limit','sort','desc'].indexOf(key) != -1) {
 						object[key] = this[key];
 					}
@@ -437,15 +437,13 @@ angular.module('arachne.services', [])
 		factory.getTop = function() {
     		return $http.get('con10t/top.json');
 		}
-		factory.getProjects = function() {
-    		return $http.get('con10t/projects.json');
-		}
 		factory.getFront = function() {
     		return $http.get('con10t/front.json');
 		}
 		return factory;
 	})
 
+	//contact Form
 	.factory('contactService', ['$http', 'arachneSettings', '$resource',  function($http, arachneSettings, $resource) { 
 		var contactService = $resource('', {}, {
 			sendContact : {
@@ -462,6 +460,7 @@ angular.module('arachne.services', [])
 		}
 	}])
 
+	//reset request
 	.factory('resetService', ['$http', 'arachneSettings', '$resource',  function($http, arachneSettings, $resource) { 
 		var resetService = $resource('', {}, {
 			resetpwd : {
@@ -474,6 +473,23 @@ angular.module('arachne.services', [])
 		return {
 			resetpwd : function(pwd, successMethod, errorMethod){
 				return resetService.resetpwd(pwd, successMethod, errorMethod);
+			}
+		}
+	}])
+
+	//register 
+	.factory('registerService', ['$http', 'arachneSettings', '$resource',  function($http, arachneSettings, $resource) { 
+		var registerService = $resource('', {}, {
+			resetpwd : {
+				url: arachneSettings.dataserviceUri + '/user/register',
+				isArray: false,
+				method: 'POST',
+				headers: {'Content-Type': 'application/json'}
+			}
+		});
+		return {
+			register : function(pwd, successMethod, errorMethod){
+				return registerService.register(pwd, successMethod, errorMethod);
 			}
 		}
 	}])
@@ -545,16 +561,19 @@ angular.module('arachne.services', [])
 	// Represents a maps configuration
 	.factory('MapConfig', function() {
 
-		function MapConfig(config) {
-			config = config || {};
+		function MapConfig() {
 
 			this.menuTitle                     = null;
+			this.menuHeadingLayerMenu          = "Kartenoptionen"
 			this.menuHeadingOverlays           = "Overlays";
+			this.menuHeadingBaselayers         = "Karten";
 			this.menuHeadingMapfacetSelection  = "Typ der Ortsangabe";
 			this.menuHeadingSearch             = "Aktuelle Suche";
 			this.menuHeadingFilters            = "Filter";
 
-			this.menuShowOverlays              = true;
+			this.menuShowLayerMenu             = false;
+			this.menuShowOverlays              = false;
+			this.menuShowBaselayers            = false;
 			this.menuShowMapfacetSelection     = true;
 			this.menuShowSearch                = true;
 			this.menuShowFilters               = true;
@@ -562,7 +581,45 @@ angular.module('arachne.services', [])
 			this.menuFacetsAllow               = null;
 			this.menuFacetsDeny                = null;
 
+			this.menuFacetsAppend              = null;
+
 			this.facetsSelect                  = null;
+
+			this.defaultLayer                  = "osm";
+
+			this.layers = {
+				osm: {
+					name: 'OpenStreetMap',
+					type: 'xyz',
+					url: 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+					layerOptions: {
+						subdomains: ['a', 'b', 'c'],
+						attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+						continuousWorld: true,
+						maxZoom: 18
+					}
+				},
+				mapquestAerial: {
+					name: 'MapQuest Open Aerial',
+					type: 'xyz',
+					url: 'http://otile{s}.mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.png',
+					layerOptions: {
+						subdomains: ['1', '2', '3', '4'],
+						attribution: 'Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a> <img src="http://developer.mapquest.com/content/osm/mq_logo.png">',
+						continuousWorld: true
+					}
+				},
+				romanEmpire: {
+					name: 'Roman Empire',
+					type: 'xyz',
+					url: 'http://pelagios.dme.ait.ac.at/tilesets/imperium//{z}/{x}/{y}.png',
+					layerOptions: {
+						subdomains: ['a', 'b', 'c'],
+						attribution: 'Tiles: <a href="http://imperium.ahlfeldt.se/">DARE 2014</a>',
+						continuousWorld: true
+					}
+				}
+			}
 		}
 
 		MapConfig.prototype = {
@@ -578,6 +635,4 @@ angular.module('arachne.services', [])
 
 		return MapConfig;
 
-	})
-
-;
+	});

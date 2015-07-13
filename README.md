@@ -1,4 +1,4 @@
-# Arachne 4 Frontend
+# Arachne 4 Frontend     
 
 ## Development
 
@@ -13,10 +13,41 @@ You need the following components in order for the local server to work:
 * [NodeJS](https://nodejs.org/download/)
 * [Grunt](http://gruntjs.com/getting-started)
 
-To install the necessary dependencies run the following command in the working directory:
+To install the necessary dependencies for the app run the following command in the working directory:
 ```
 npm install
 ```
+
+To install the testing tools run
+
+```
+npm install -g karma
+npm install -g karma-jasmine
+npm install -g karma@canary phantomjs karma-phantomjs-launcher
+npm install -g protractor
+webdriver-manager update
+```
+
+You may need root permissions on your machine in order to perform these commands successfully.
+
+On Debian-based systems, if you have trouble installing dependencies use the 'nodejs-legacy'-package instead of 'nodejs'. Also the grunt-cli needs to be installed globally to run 'grunt server'.
+
+```
+sudo apt-get install nodejs-legacy
+sudo npm install -g grunt-cli
+```
+
+### Running the tests
+
+Two types of tests are supported at the moment. User Interface (UI) and unit tests. To run the unit tests, call
+
+```bash
+karma start config/karma.conf.js
+```
+
+which will run all tests matching the filename pattern spec/*Spec.js. Jasmine is used as the testing framework here.
+
+The somewhat more complex test setup for UI testing is described [here](docs/testing_the_user_interface.md).
 
 ### con10t submodule
 
@@ -24,7 +55,6 @@ The static files representing the project pages are stored in the directory `con
 
 In order to set up the submodule you have to run the following commands after the initial checkout:
 ```
-cd con10t
 git submodule init
 git submodule update
 ```
