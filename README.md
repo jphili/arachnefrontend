@@ -16,6 +16,8 @@ You need the following components in order for the local server to work:
 To install the necessary dependencies for the app run the following command in the working directory:
 ```
 npm install
+npm install -g bower
+bower install
 ```
 
 To install the testing tools run
@@ -23,6 +25,7 @@ To install the testing tools run
 ```
 npm install -g karma
 npm install -g karma-jasmine
+npm install -g karma-ng-html2js-preprocessor
 npm install -g karma@canary phantomjs karma-phantomjs-launcher
 npm install -g protractor
 webdriver-manager update
@@ -42,12 +45,12 @@ sudo npm install -g grunt-cli
 Two types of tests are supported at the moment. User Interface (UI) and unit tests. To run the unit tests, call
 
 ```bash
-karma start config/karma.conf.js
+karma start test/karma.conf.js
 ```
 
-which will run all tests matching the filename pattern spec/*Spec.js. Jasmine is used as the testing framework here.
+which will run all tests matching the filename pattern test/*_spec.js. Jasmine is used as the testing framework here.
 
-The somewhat more complex test setup for UI testing is described [here](docs/testing_the_user_interface.md).
+The somewhat more complex test setup for e2e testing is described [here](docs/development_e2e_testing.md).
 
 ### con10t submodule
 

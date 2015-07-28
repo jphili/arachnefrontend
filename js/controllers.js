@@ -3,15 +3,7 @@
 /* Controllers */
 
 angular.module('arachne.controllers', ['ui.bootstrap'])
-.controller("NavBarController",[ '$scope', 'con10tService',
-	function ($scope, con10tService){
-		
-		$scope.topMenu = null;
-		/*con10tService.getTop().success(function(data){
-			$scope.topMenu = data;
-		});*/
-	}
-])
+
 .controller('MenuController',	[ '$scope', '$modal', 'authService', '$location', '$window',
 	function ($scope,  $modal, authService, $location, $window) {
 
@@ -182,13 +174,15 @@ angular.module('arachne.controllers', ['ui.bootstrap'])
 
 	}
 ])
-.controller('SearchController', ['$rootScope','$scope','searchService','categoryService', '$filter', 'arachneSettings', '$location', 'messageService', '$http',
-	function($rootScope,$scope, searchService, categoryService, $filter, arachneSettings, $location, messageService, $http){
+.controller('SearchController', ['$rootScope','$scope','searchService','categoryService', '$filter', 'arachneSettings', '$location', 'Catalog','messageService', '$modal', '$http', 'Entity', 'authService',
+	function($rootScope,$scope, searchService, categoryService, $filter, arachneSettings, $location, Catalog, messageService, $modal, $http, Entity, authService){
 
 		$rootScope.hideFooter = false;
+		$scope.user = authService.getUser();
 		
 		$scope.currentQuery = searchService.currentQuery();
 		$scope.q = angular.copy($scope.currentQuery.q);
+		//$scope.user = authService.getUser();
 
 		$scope.sortableFields = arachneSettings.sortableFields;
 		// ignore unknown sort fields
@@ -200,23 +194,84 @@ angular.module('arachne.controllers', ['ui.bootstrap'])
 			$scope.categories = categories;
 		});
 	
-		searchService.getCurrentPage().then(function(entities) {
-			$scope.entities = entities;
+		//-------------------- Query to Catalog --------------
+		$scope.toCatalog = function() {
+			var count = searchService.getSize();
+			var off = 0;
+			var error = false; 
+			$scope.catalogEntries = [];
 
-			//------------------ QUICKFIX -----------------------
-			for(i=0; i<=$scope.entities.length-1; i++)
-			{
-				var filter;
-				filter = $scope.entities[i].title.substring(0,26);
-				if(filter == "Bestand-D-DAI-Z-Arch-FWH-F")
-				{
-					$scope.entities[i].tumbnailId = 0;
-					console.log($scope.entities[i].thumbnailId = 0);
-				}
+			if(count >= 1000)
+				alert("Die Suchmenge ist sehr groß, wir empfehlen den Vorgang abzubrechen");
 
+			while(count >= 0){
+				var query = angular.extend({offset: off, limit:50}, $scope.currentQuery.toFlatObject());
+				var entities = Entity.query(query); 
+
+				setTimeout(function(){
+					if(!entities.entities){
+						//zu lagsam, mehr Zeit
+						setTimeout(function(){
+							for(var i = 0; i<=entities.entities.length-1; i++)
+							{
+								$scope.catalogEntries[off+i] = {
+									"arachneEntityId" : entities.entities[i].entityId,
+									"label" : entities.entities[i].title,
+									"text" : entities.entities[i].subtitle
+								}
+							} 
+							off += 50;
+							}, 1000);
+						
+					}else
+					{
+						for(var i = 0; i<=entities.entities.length-1; i++)
+						{
+							$scope.catalogEntries[off+i] = {
+								"arachneEntityId" : entities.entities[i].entityId,
+								"label" : entities.entities[i].title,
+								"text" : entities.entities[i].subtitle
+							}
+						} 
+						off += 50;
+					}
+					
+				}, 500);
+
+				count -=50;					
 			}
 
-			//-------------------- QUICKFIX ----------------------
+			var text = $scope.currentQuery.toFlatObject().q;
+
+			for(var i = 0; i<= $scope.currentQuery.toFlatObject().fq.length-1; i++){
+				text = text + " " + $scope.currentQuery.toFlatObject().fq[i];
+			}
+				if(!error)
+				{
+					var bufferCatalog = {
+						author: $scope.user.username,
+						root:{
+							label: $scope.currentQuery.label,
+							text: text,
+							children: $scope.catalogEntries
+						}
+					};
+					var catalogFromSearch = $modal.open({
+						templateUrl: 'partials/Modals/editCatalog.html',
+						controller: 'EditCatalogController',
+						resolve: { catalog: function() {  return bufferCatalog } }
+					});
+					catalogFromSearch.close = function(newCatalog) {
+						newCatalog.public = false;
+						Catalog.save({}, newCatalog, function(result) {
+						});
+						catalogFromSearch.dismiss();
+					}
+				}
+		};
+
+		searchService.getCurrentPage().then(function(entities) {
+			$scope.entities = entities;
 			$scope.resultSize = searchService.getSize();
 			$scope.totalPages = Math.ceil($scope.resultSize / $scope.currentQuery.limit);
 			$scope.currentPage = $scope.currentQuery.offset / $scope.currentQuery.limit + 1;
@@ -370,7 +425,7 @@ angular.module('arachne.controllers', ['ui.bootstrap'])
 				};
 				var editEntryModal = $modal.open({
 					templateUrl: 'partials/Modals/editEntry.html',
-					controller: 'EditCatalogEntryCtrl',
+					controller: 'EditCatalogEntryController',
 					resolve: { entry: function() { return entry } }
 				});
 				editEntryModal.close = function(newEntry) {
@@ -404,18 +459,6 @@ angular.module('arachne.controllers', ['ui.bootstrap'])
 			
 			Entity.get({id:$routeParams.id}, function(data) {
 				$scope.entity = data;
-
-				//----------------- QUICKFIX -------------------
-
-				var filter;
-				filter = $scope.entity.title.substring(0,26);
-				if(filter == "Bestand-D-DAI-Z-Arch-FWH-F")
-				{
-					$scope.entity.images = 0;
-				}
-
-
-				//--------------- END QUICKFIX -----------------
 				document.title = $scope.entity.title + " | Arachne";
 			}, function(response) {
 				$scope.error = true;
@@ -513,7 +556,7 @@ angular.module('arachne.controllers', ['ui.bootstrap'])
 		$scope.editEntry = function(entry) {
 			var editEntryModal = $modal.open({
 				templateUrl: 'partials/Modals/editEntry.html',
-				controller: 'EditCatalogEntryCtrl',
+				controller: 'EditCatalogEntryController',
 				resolve: { entry: function() { return entry } }
 			});
 			editEntryModal.close = function(newEntry) {
@@ -524,13 +567,12 @@ angular.module('arachne.controllers', ['ui.bootstrap'])
 		}
 
 		$scope.createCatalog = function() {
-			console.log($scope.user);
 			var catalogBuffer = {
 				author: $scope.user.username
 			};
 			var editCatalogModal = $modal.open({
 				templateUrl: 'partials/Modals/editCatalog.html',
-				controller: 'EditCatalogCtrl',
+				controller: 'EditCatalogController',
 				resolve: { catalog: function() { return catalogBuffer } }
 			});
 			editCatalogModal.close = function(newCatalog) {
@@ -546,7 +588,7 @@ angular.module('arachne.controllers', ['ui.bootstrap'])
 		$scope.editCatalog = function() {
 			var editCatalogModal = $modal.open({
 				templateUrl: 'partials/Modals/editCatalog.html',
-				controller: 'EditCatalogCtrl',
+				controller: 'EditCatalogController',
 				resolve: { catalog: function() { return $scope.activeCatalog } }
 			});
 			editCatalogModal.close = function(newCatalog) {
@@ -627,7 +669,6 @@ angular.module('arachne.controllers', ['ui.bootstrap'])
 		$scope.downloadImage = function() {
 			var imgUri = arachneSettings.dataserviceUri + "/image/" + $scope.imageId;
 			var entityUri = arachneSettings.dataserviceUri + "/entity/" + $scope.imageId;
-				console.log("downloadingimage");
 			
 
 			$http.get(imgUri, { responseType: 'blob' }).success(function(data) {
@@ -689,13 +730,12 @@ angular.module('arachne.controllers', ['ui.bootstrap'])
 		});
 
 	}
-])
-.controller('StartSiteController', ['$rootScope', '$scope', '$http', 'arachneSettings', 'con10tService', 'messageService', 'categoryService', '$timeout',
-	function ($rootScope, $scope, $http, arachneSettings, con10tService, messageService, categoryService, $timeout) {
+]).controller('StartSiteController', ['$rootScope', '$scope', '$http', 'arachneSettings', 'messageService',
+	function ($rootScope, $scope, $http, arachneSettings, messageService) {
 
 		$rootScope.hideFooter = false;
 
-		con10tService.getFront().success(function(projectsMenu){
+		$http.get('con10t/front.json').success(function(projectsMenu){
 			var projslides = $scope.projslides = [];
 			for(var key in projectsMenu) {
 				projslides.push({

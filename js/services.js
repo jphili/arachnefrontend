@@ -257,7 +257,7 @@ angular.module('arachne.services', [])
 					} else if (key == 'catalogIds') {
 						queries.push("catalogIds:" + this[key]);
 					} else if (key == 'q') {
-						queries.push(this[key] + " -facet_kategorie:Orte");
+						queries.push(this[key]);
 					} else if (['fl','limit','sort','desc'].indexOf(key) != -1) {
 						object[key] = this[key];
 					}
@@ -431,17 +431,6 @@ angular.module('arachne.services', [])
 		return factory;
 
 	}])
-
-	.factory('con10tService', function($http) { 
-		var factory = {};
-		factory.getTop = function() {
-    		return $http.get('con10t/top.json');
-		}
-		factory.getFront = function() {
-    		return $http.get('con10t/front.json');
-		}
-		return factory;
-	})
 
 	//contact Form
 	.factory('contactService', ['$http', 'arachneSettings', '$resource',  function($http, arachneSettings, $resource) { 

@@ -2,6 +2,7 @@
 
 angular.module('arachne',[
 	'ui.bootstrap',
+	'ui.bootstrap.tpls',
     'ui.utils',
 	'ngRoute',
 	'ngSanitize',
@@ -11,11 +12,13 @@ angular.module('arachne',[
 	'angulartics.google.analytics',
 	'relativePathsInPartial',
 	'ui.tree',
+	'idai.templates',
+	'idai.components',
 	'arachne.filters',
 	'arachne.services',
 	'arachne.directives',
 	'arachne.controllers',
-    'arachne.widgets.directives'
+	'arachne.widgets.directives'
 ])
 .config(['$routeProvider', '$locationProvider', '$compileProvider', function($routeProvider, $locationProvider, $compileProvider) {
 	$locationProvider.html5Mode(true);
@@ -44,7 +47,6 @@ angular.module('arachne',[
 		.when('/info/:title', {templateUrl: 'partials/static.html'}); // Named it info, not static, to sound not too technical.
 }]).constant('arachneSettings', {
 		dataserviceUri: "http://" + document.location.host + "/data",
-		//dataserviceUri: "http://lakota.archaeologie.uni-koeln.de/data",
 		openFacets : ["facet_image", "facet_kategorie", "facet_bestandsname", "facet_subkategoriebestand"],
 		sortableFields : ["entityId", "title", "subtitle"]
 }).run(['$rootScope', function($rootScope) {
