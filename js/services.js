@@ -547,7 +547,9 @@ angular.module('arachne.services', [])
 
 	}])
 
-	// Represents a maps configuration
+	// Represents a configuration for a map with corresponding menu.
+	// Only holds values that are required once for the map's and
+	// map menu's setup, but which do not change by user input.
 	.factory('MapConfig', function() {
 
 		function MapConfig() {
@@ -574,9 +576,11 @@ angular.module('arachne.services', [])
 
 			this.facetsSelect                  = null;
 
-			this.defaultLayer                  = "osm";
+			this.overlays                      = null;
 
-			this.layers = {
+			this.defaultBaselayer                  = "osm";
+
+			this.baselayers = {
 				osm: {
 					name: 'OpenStreetMap',
 					type: 'xyz',
@@ -586,26 +590,6 @@ angular.module('arachne.services', [])
 						attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 						continuousWorld: true,
 						maxZoom: 18
-					}
-				},
-				mapquestAerial: {
-					name: 'MapQuest Open Aerial',
-					type: 'xyz',
-					url: 'http://otile{s}.mqcdn.com/tiles/1.0.0/sat/{z}/{x}/{y}.png',
-					layerOptions: {
-						subdomains: ['1', '2', '3', '4'],
-						attribution: 'Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a> <img src="http://developer.mapquest.com/content/osm/mq_logo.png">',
-						continuousWorld: true
-					}
-				},
-				romanEmpire: {
-					name: 'Roman Empire',
-					type: 'xyz',
-					url: 'http://pelagios.dme.ait.ac.at/tilesets/imperium//{z}/{x}/{y}.png',
-					layerOptions: {
-						subdomains: ['a', 'b', 'c'],
-						attribution: 'Tiles: <a href="http://imperium.ahlfeldt.se/">DARE 2014</a>',
-						continuousWorld: true
 					}
 				}
 			}
@@ -624,4 +608,141 @@ angular.module('arachne.services', [])
 
 		return MapConfig;
 
-	});
+	})
+
+	// Represents a place with entities
+	// (as opposed to the entity with places, that is served by the backend)
+	.factory('Place', function() {
+
+		function Place() {
+			this.location = null; // { lon: 12.345, lat: 12.345 }
+			this.name = "";
+			this.gazetteerId = null;
+			this.entityCount = 0;
+			this.entities = {}; // { relation1: [entity1, entity2], relation2: [entity3, ...], ... }
+			this.query = null;
+		};
+
+		Place.prototype = {
+
+			merge: function(other) {
+				for (var key in other) {
+					this[key] = other[key];
+				}
+
+				delete this.relation;
+
+				return this;
+			},
+
+			hasCoordinates: function() {
+				return (this.location && this.location.lat && this.location.lon);
+			},
+
+			getId: function() {
+				if (this.hasCoordinates()) {
+					var id = this.location.lat + ',' + this.location.lon;
+				} else {
+					var id = this.name;
+				}
+				return id;
+			},
+
+			addEntity: function(entity, relation) {
+				if (!this.entities[relation]) {
+					this.entities[relation] = [];
+				}
+				this.entities[relation].push(entity);
+				this.entityCount += 1;
+			}
+		};
+
+		// factory to generate places objects from buckets of facets containing geo information
+		// query is a Query object, that schould be used to search for the entities connected
+		// bucket is a facet value, e.g.: {
+		//     "value": "Siena, Italien, buonconvento[43.132963,11.483803]",
+		//     "count": 14
+		// }
+		Place.fromBucket = function(bucket, query) {
+			var place = new Place();
+			var coordsString = bucket.value.substring(bucket.value.indexOf("[", 1)+1, bucket.value.length - 1);
+			var coords = coordsString.split(',');
+			place.location = { lat: coords[0], lon: coords[1] }
+			place.name = bucket.value.substring(0, bucket.value.indexOf("[", 1)) + " ";
+			place.entityCount = bucket.count;
+			place.query = query;
+			return place;
+		};
+
+		return Place;
+
+	})
+
+	// Provides a list of Place objects corresponding to the entities in the current search result
+	.factory('placesService', ['searchService', 'Place', function(searchService, Place) {
+
+		// A list of places or a promise of such a list
+		var promise = null;
+
+		// Keep the last query used to construct the places list
+		// to check if the current query is different
+		var lastQuery = null;
+
+		// reads a list of entities with connected places
+		// returns a list of places with connected entities
+		var buildPlacesListFromEntityList = function(entities) {
+			var places = {};
+			var placesList = [];
+
+			for(var i = 0; i < entities.length; i++) {
+				var entity = entities[i];
+
+				if (entity.places) {
+					for (var j = 0; j < entity.places.length; j++) {
+						var place = new Place();
+						place.merge(entity.places[j]);
+
+						// If there already is a place with the same id, use
+						// that one instead
+						var key = place.getId();
+						if (places[key]) {
+							places[key].addEntity(entity);
+						} else {
+							place.addEntity(entity);
+							places[key] = place;
+						}
+					}
+				}
+			}
+
+			for (key in places) {
+				placesList.push(places[key]);
+			}
+
+			return placesList;
+		};
+
+		return {
+
+			// returns a promise for list of places corresponding
+			// to the current search result
+			getCurrentPlaces: function() {
+				var oldPromise = promise;
+
+				promise = searchService.getCurrentPage().then(function(entities) {
+					if (oldPromise && lastQuery && angular.equals(lastQuery, searchService.currentQuery().toFlatObject())) {
+						return oldPromise;
+					} else {
+						lastQuery = searchService.currentQuery().toFlatObject();
+						return buildPlacesListFromEntityList(entities);
+					}
+				});
+
+				return promise;
+			}
+
+		}
+
+	}])
+
+;

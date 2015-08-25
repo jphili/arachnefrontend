@@ -1,27 +1,16 @@
 
-<div ng-controller="MapController">
+<div ng-controller="EntitySearchMapController">
 
 	<!-- Loading-Icon -->
 	<div ng-hide="resultSize >= 0" class="loading"></div>
 
-	<div ar-map-menu
-		result-size="resultSize"
-		facet-limit="facetLimit"
-		mapfacet="mapfacet"
-		mapfacet-names="mapfacetNames"
+	<div ng-transclude></div>
+
+	<div ar-places-map ng-if="resultSize != null" class="col-md-12 ar-map ar-fullscreenmap" id="map"
+		places="places"
 		current-query="currentQuery"
-		facets="facets"
-		overlays="overlays"
-		search-function="searchDeferred"
-		map-config="mapConfig">
+		map-config="mapConfig"
+		clustered="clustered">
 	</div>
 
-	<div ar-map class="col-md-12 ar-map ar-fullscreenmap" id="map"
-		ng-if="resultSize != null"
-		mapfacet="mapfacet"
-		current-query="currentQuery"
-		overlays="overlays"
-		search-function="searchDeferred"
-		map-config="mapConfig">
-	</div>
 </div>

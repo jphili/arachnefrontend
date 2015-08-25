@@ -39,7 +39,8 @@
 	<idai-navbar
 		login-function="openLoginModal()"
 		logout-function="logout()"
-		user-object="user"></idai-navbar>
+		user-object="user"
+		hide-search-form="currentPath == '/'"></idai-navbar>
 
 	<div class="container-fluid">
 
@@ -60,7 +61,7 @@
 
 		</div>
 
-		<idai-footer></idai-footer>
+		<idai-footer ng-hide="$root.hideFooter" mailto="idai.objects@dainst.org"></idai-footer>
 	</div>
 
 

@@ -117,24 +117,38 @@ angular.module('arachne.widgets.directives', [])
 
 	.directive('con10tCatalogMap', ['searchService', function(searchService) {
 		return {
-			restrict: 'E',
+			restrict: 'A',
 			scope: {
-				overlays: '=',
-				mapConfig: '='
+				mapConfig: '=',
+                limit: '@',
+                clustered: '=' // true|false
 			},
+            // menu elements may appear in the transcluded html
+            transclude: true,
 			templateUrl: 'partials/widgets/con10t-catalog-map.html',
-			link: function(scope) {
+			controller: function($scope) {
+
+                var currentQuery = searchService.currentQuery();
+
+                // Set currentQuery phrase to '*' if not defined beforehand
+                if (!currentQuery.q) {
+                    currentQuery.q = '*';
+                }
+
+                // Add a limit to the search if defined in the attribute
+                if ($scope.limit) {
+                    currentQuery.limit = $scope.limit;
+                }
+
 				// Add restrictions for facets to the search if defined in mapConfig
-				var facets = scope.mapConfig.facetsSelect;
+				var facets = $scope.mapConfig.facetsSelect;
 
 				if (facets) {
-					var query = searchService.currentQuery();
-
 					for (var i = 0; i < facets.length; i++) {
 						var facet = facets[i];
 
-						if (!query.hasFacet(facet.key)) {
-							query.facets.push(facet);
+						if (!currentQuery.hasFacet(facet.key)) {
+							currentQuery.facets.push(facet);
 						}
 					}
 				}

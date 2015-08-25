@@ -346,8 +346,9 @@ angular.module('arachne.controllers', ['ui.bootstrap'])
 
 	}
 ])
-.controller('MapController', ['$rootScope', '$scope', 'searchService', 'messageService',
-	function($rootScope, $scope, searchService, messageService) {
+// provides a search function to fill an ar-places-map with locations based on facets from a search result
+.controller('FacetSearchMapController', ['$rootScope', '$scope', 'searchService', 'messageService', 'Place',
+	function($rootScope, $scope, searchService, messageService, Place) {
 
 		$scope.mapfacetNames = ["facet_aufbewahrungsort", "facet_fundort", "facet_geo"]; //, "facet_ort"
 
@@ -355,34 +356,67 @@ angular.module('arachne.controllers', ['ui.bootstrap'])
 
 		var promise = null;
 
-		$scope.searchDeferred = function() {
-			if (promise) {
-				return promise;
-			}
+		$scope.currentQuery = searchService.currentQuery();
+		$scope.currentQuery.limit = 0;
+		if (!$scope.currentQuery.restrict) {
+			$scope.currentQuery.restrict = $scope.mapfacetNames[0];
+		}
 
-			$scope.currentQuery = searchService.currentQuery();
-			$scope.currentQuery.limit = 0;
-			if (!$scope.currentQuery.restrict) {
-				$scope.currentQuery.restrict = $scope.mapfacetNames[0];
-			}
-
-			promise = searchService.getCurrentPage().then(function(entities) {
-				$scope.resultSize = searchService.getSize();
-				$scope.facets = searchService.getFacets();
-				for (var i = 0; i < $scope.facets.length; i++) {
-					if ($scope.facets[i].name == $scope.currentQuery.restrict) {
-						$scope.mapfacet = $scope.facets[i];
-						break;
-					}
+		searchService.getCurrentPage().then(function(entities) {
+			$scope.facets = searchService.getFacets();
+			for (var i = 0; i < $scope.facets.length; i++) {
+				if ($scope.facets[i].name == $scope.currentQuery.restrict) {
+					$scope.mapfacet = $scope.facets[i];
+					break;
 				}
-			}, function(response) {
-				$scope.resultSize = 0;
-				$scope.error = true;
-				if (response.status == '404') messageService.addMessageForCode('backend_missing');
-				else messageService.addMessageForCode('search_' +  response.status);
-			});
+			}
 
-			return promise;
+			var places = [];
+			for (var i = 0; i < $scope.mapfacet.values.length; i++) {
+				var bucket = $scope.mapfacet.values[i];
+				var query = searchService.currentQuery().removeParams(['fl', 'lat', 'lng', 'zoom', 'overlays']).addFacet($scope.mapfacet.name,bucket.value)
+				var place = Place.fromBucket(bucket, query);
+				places.push(place);
+			}
+			$scope.places = places;
+			$scope.resultSize = searchService.getSize();
+		}, function(response) {
+			$scope.resultSize = 0;
+			$scope.error = true;
+			if (response.status == '404') messageService.addMessageForCode('backend_missing');
+			else messageService.addMessageForCode('search_' +  response.status);
+		});
+	}
+])
+.controller('EntitySearchMapController', ['$rootScope', '$scope', 'searchService', 'messageService', 'Place', 'placesService',
+	function($rootScope, $scope, searchService, messageService, Place, placesService) {
+
+		$rootScope.hideFooter = true;
+
+		$scope.currentQuery = searchService.currentQuery();
+
+		placesService.getCurrentPlaces().then(function (places) {
+			$scope.facets = searchService.getFacets();
+
+			$scope.places = places;
+			$scope.resultSize = searchService.getSize();
+		}, function(response) {
+			$scope.resultSize = 0;
+			$scope.error = true;
+			if (response.status == '404') messageService.addMessageForCode('backend_missing');
+			else messageService.addMessageForCode('search_' +  response.status);
+		});
+
+	}
+])
+.controller('MapMenuController', ['$scope', 'searchService',
+	function($scope, searchService) {
+
+		$scope.leftMenuToggled = true;
+		$scope.rightMenuToggled = true;
+
+		$scope.overlaysActive = function() {
+			return (searchService.currentQuery().overlays ? true : false);
 		}
 	}
 ])
